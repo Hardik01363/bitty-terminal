@@ -6,6 +6,10 @@
 
 static int32_t masterfd;
 
+size_t read_from_pty(void) {
+
+}
+
 int main(void) {
     if(forkpty(&masterfd, NULL, NULL, NULL) == 0) {
         execlp("usr/bin/bash", "bash", NULL);
@@ -15,8 +19,16 @@ int main(void) {
 
     bool running = true;
 
+    fd_set fdset;
     while(running) {
+        //Clearing and rebuilding the fdset each loop
+        FD_ZERO(&fdset);
+        FD_SET(masterfd, &fdset);
+        select(masterfd, &fdset, NULL, NULL, NULL);
         
+        if(FD_ISSET(masterfd, &fdset)) {
+            //read_from_pty();
+        }
     }
 
     printf("Hello World!");
