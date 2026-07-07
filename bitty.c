@@ -8,6 +8,13 @@
 #include <pty.h>
 #include <sys/select.h>
 
+//For terminal window GUI and Text Rendering, I'm using the leif library and its functions. Definitions will be a bit different for Wayland users. Thse definitions are tried and tested on my local machine using X11.
+#define LF_X11
+#define LF_RUNARA
+#include <leif/leif.h>
+#include <leif/win.h>
+#include <leif/ui_core.h>
+
 static int32_t masterfd;
 
 int32_t decode_utf8(const char *s, uint32_t  *out_cp) {// Returns length of utf8 string
@@ -57,6 +64,10 @@ int main(void) {
         perror("execlp");
         exit(1);
     }
+
+    lf_windowing_init();
+    lf_window_t window = lf_ui_core_create_window(1560, 980, "bitty - custom terminal & shell"); //parameters for lf_ui_core_create_window(pixel width, pixel height, terminal title)
+    lf_ui_state_t* ui = lf_ui_core_init(window); //initialising UI state
 
     bool running = true;
 
