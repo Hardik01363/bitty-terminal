@@ -72,11 +72,13 @@ int main(void) {
     bool running = true;
 
     fd_set fdset;
+    int32_t x11fd = ConnectionNumber(lf_win_get_x11_display());
     while(running) {
         //Clearing and rebuilding the fdset each loop
         FD_ZERO(&fdset);
         FD_SET(masterfd, &fdset);
-        select(masterfd, &fdset, NULL, NULL, NULL);
+        FD_SET(x11fd, &fdset);
+        select(MAX(x11fd, masterfd)+1, &fdset, NULL, NULL, NULL);
         
         if(FD_ISSET(masterfd, &fdset)) {
             read_from_pty();
