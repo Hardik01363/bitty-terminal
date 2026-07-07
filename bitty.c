@@ -1,13 +1,54 @@
+#include <limits.h>
+#include <string.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdbool.h>
 #include <pty.h>
+#include <sys/select.h>
 
 static int32_t masterfd;
 
-size_t read_from_pty(void) {
+int32_t decode_utf8(const char *s, uint32_t  *out_cp) {// Returns length of utf8 string
+    unsigned char c = s[0];
+    if (c < 0x80) {
+        *out_cp = c;
+        return 1;
+    } else if ((c >> 5) == 0x6) {
+        *out_cp = ((c & 0x1F) << 6) | (s[1] & 0x3F);
+        return 2;
+    } else if ((c >> 4) == 0xE) {
+        *out_cp = ((c & 0x0F) << 12) | ((s[1] & 0x3F) << 6) | (s[2] & 0x3F);
+        return 3;
+    } else if ((c >> 3) == 0x1E) {
+        *out_cp = ((c & 0x07) << 18) | ((s[1] & 0x3F) << 12) | ((s[2] & 0x3F) << 6) | (s[3] & 0x3F);
+        return 4;
+    }
+    return -1; // invalid UTF-8
+}
 
+size_t read_from_pty(void) {
+    static char buff[SHRT_MAX];
+    static uint32_t buff_len = 0;
+
+    int32_t read_bytes = read(masterfd, buff + buff_len, sizeof(buff) - buff_len);
+    buff_len += read_bytes;
+
+    uint32_t iter = 0;
+    while(iter < buff_len) {
+        uint32_t codepoint;
+        int32_t len = decode_utf8(&buff[iter], &codepoint);
+        if(len == -1 || len > buff_len) break;
+        iter += len;
+    }
+
+    if(iter < buff_len) {
+        memmove(buff, buff + iter, buff_len - iter);
+    }
+    
+    buff_len -= iter;
+    return read_bytes;
 }
 
 int main(void) {
@@ -27,7 +68,7 @@ int main(void) {
         select(masterfd, &fdset, NULL, NULL, NULL);
         
         if(FD_ISSET(masterfd, &fdset)) {
-            //read_from_pty();
+            read_from_pty();
         }
     }
 
