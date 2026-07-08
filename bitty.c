@@ -83,6 +83,10 @@ int main(void) {
         if(FD_ISSET(masterfd, &fdset)) {
             read_from_pty();
         }
+
+        if(FD_ISSET(x11fd, &fdset)) {
+            lf_ui_core_next_event(ui);
+        }
     }
 
     printf("Hello World!");
