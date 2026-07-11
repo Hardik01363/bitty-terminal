@@ -40,6 +40,7 @@ size_t read_from_pty(void) {
     static uint32_t buff_len = 0;
 
     int32_t read_bytes = read(masterfd, buff + buff_len, sizeof(buff) - buff_len);
+    if(read_bytes <= 0) return 0;
     buff_len += read_bytes;
 
     uint32_t iter = 0;
