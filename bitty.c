@@ -30,9 +30,10 @@ static cell_t* cells;
 static uint32_t rows = 30;
 static uint32_t cols = 100;
 static lf_ui_state_t* ui;
+static lf_mapped_font_t font;
 
 void setcell(uint32_t x, uint32_t y, uint32_t codepoint) {
-    cells[x*cols + y].codepoint = codepoint; //mapping 2D coords to 1D
+    cells[y * cols + x].codepoint = codepoint; //mapping 2D coords to 1D
 }
 
 void handle_codepoint(uint32_t codepoint) {
@@ -85,9 +86,16 @@ int32_t utf8_encode(uint32_t codepoint, char *out) {
 }
 
 void render_rows() {
+    float y = 0.0f;
     for(uint32_t i = 0; i < rows; i++) {
         char* row = malloc(cols * sizeof(uint32_t) + 1); //uint32_t as we are hoping to support unicode
-        ui->render_text(ui->render_state)
+        char* rowptr = row;
+        for(uint32_t j = 0; j < cols; j++) {
+            rowptr += utf8_encode(cells[i * cols + j], codepoint, rowptr);
+        }
+        *rowptr = '\0'; //null terminatinng
+        ui->render_text(ui->render_state, row, font.font, (vec2s){.x = 0, .y = y}, LF_WHITE);
+        y += font.font->line.h;
     }
 }
 
@@ -105,6 +113,7 @@ void term_next_event(lf_ui_state_t* ui) {
         vec2s winsize = lf_win_get_size(ui->win);
         ui->render_clear_color_area(lf_color_from_hex(0xa03cf2), LF_SCALE_CONTAINER(winsize.x, winsize.y), winsize.y);
         ui->render_begin(ui->render_state);
+        render_rows();
         ui->render_rect(ui->render_state, (vec2s){50, 50}, (vec2s){50, 50}, LF_RED, LF_NO_COLOR, 0.0f, 0.0f);
         ui->render_end(ui->render_state);
         lf_win_swap_buffers(ui->win);
@@ -151,6 +160,8 @@ int main(void) {
     lf_windowing_init();
     lf_window_t window = lf_ui_core_create_window(1560, 980, "bitty - custom terminal & shell"); //parameters for lf_ui_core_create_window(pixel width, pixel height, terminal title)
     ui = lf_ui_core_init(window); //initialising UI state
+    cells = malloc(sizeof(Cell) * rows *  cols);
+    font = lf_asset_manager_request_font(ui, "JetBrains Mono Nerd Font", LF_FONT_SIZE_REGULAR, 20);
 
     fd_set fdset;
     int32_t x11fd = ConnectionNumber(lf_win_get_x11_display());
